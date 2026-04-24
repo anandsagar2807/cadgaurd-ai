@@ -1,4 +1,4 @@
-import Groq from 'groq-sdk';
+import Groq from 'groq';
 
 const groqApiKey = import.meta.env.VITE_GROQ_API_KEY;
 

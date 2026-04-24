@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { groqService } from '../services/groqService';
 import { chatbotApi } from '../services/api';
 import {
     Send,
@@ -153,33 +154,24 @@ const Copilot: React.FC = () => {
         setIsLoading(true);
 
         try {
-            // Prepare messages for API - only send last 10 messages for context
+            // Prepare messages for Groq - only send last 10 messages for context
             const recentMessages = messages.slice(-10).map((m) => ({
                 role: m.role,
                 content: m.content
             }));
 
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: [...recentMessages, { role: 'user', content: text }],
-                    context: 'CAD Design Validation',
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
+            // Call Groq service directly instead of backend
+            const response = await groqService.copilotChat([
+                ...recentMessages,
+                { role: 'user', content: text }
+            ]);
 
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: data.response || data.message || 'I received your message but could not generate a response.',
+                content: response || 'I received your message but could not generate a response.',
                 timestamp: new Date(),
-                suggestions: data.suggestions || [],
+                suggestions: extractSuggestions(response),
             };
 
             setMessages((prev) => [...prev, assistantMessage]);
@@ -189,25 +181,41 @@ const Copilot: React.FC = () => {
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: `⚠️ **Connection Error**
+                content: `⚠️ **Groq API Error**
 
-I'm unable to connect to the backend server. Please ensure:
+I encountered an error while trying to generate a response. Please ensure:
 
-1. **Backend is running**: Start the backend with \`cd backend && python main.py\`
-2. **Server is on port 8000**: The API should be at http://localhost:8000
-3. **Grok API key is set**: Ensure GROK_API_KEY is in your .env file
+1. **Groq API key is set**: VITE_GROQ_API_KEY environment variable must be configured
+2. **Valid API key**: Check that your Groq API key is correct and active
+3. **API quota**: Verify you haven't exceeded your API usage limits
 
 **Error details**: ${error instanceof Error ? error.message : 'Unknown error'}
 
 Would you like to try again?`,
                 timestamp: new Date(),
-                suggestions: ['Retry connection', 'Check backend status'],
+                suggestions: ['Retry', 'Check configuration'],
             };
             setMessages((prev) => [...prev, errorMessage]);
             setConnectionStatus('error');
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Helper function to extract suggestions from response
+    const extractSuggestions = (content: string): string[] => {
+        const suggestions: string[] = [];
+        // Look for suggestions in the response (you can customize this logic)
+        if (content.includes('?')) {
+            suggestions.push('Tell me more');
+        }
+        if (content.includes('recommend')) {
+            suggestions.push('Show recommendations');
+        }
+        if (content.includes('design') || content.includes('CAD')) {
+            suggestions.push('Design tips');
+        }
+        return suggestions.slice(0, 3); // Return max 3 suggestions
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {

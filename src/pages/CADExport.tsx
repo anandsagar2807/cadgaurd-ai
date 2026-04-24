@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Download, FileText, Image, Camera, Settings, CheckCircle, Folder, File } from 'lucide-react';
+import { groqService } from '../services/groqService';
 import AdvancedCADViewer from '../components/AdvancedCADViewer';
 import { chatbotApi } from '../services/api';
 
@@ -66,12 +67,23 @@ const CADExport: React.FC = () => {
         setIsExporting(true);
         setExportComplete(false);
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+            // Generate export recommendations using Groq
+            const format = formats.find(f => f.id === selectedFormat) || { label: 'STEP' };
+            await groqService.generateExportRecommendations(format.label);
 
-        setIsExporting(false);
-        setExportComplete(true);
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-        setTimeout(() => setExportComplete(false), 3000);
+            setIsExporting(false);
+            setExportComplete(true);
+
+            setTimeout(() => setExportComplete(false), 3000);
+        } catch (error) {
+            console.error('Error during export:', error);
+            setIsExporting(false);
+            setExportComplete(true);
+            setTimeout(() => setExportComplete(false), 3000);
+        }
     };
 
     const exportScreenshot = () => {

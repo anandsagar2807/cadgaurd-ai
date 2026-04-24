@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Ruler, Move, Target, Circle, Box, Trash2, CheckCircle } from 'lucide-react';
+import { groqService } from '../services/groqService';
 import AdvancedCADViewer from '../components/AdvancedCADViewer';
 
 interface Measurement {
@@ -32,7 +33,7 @@ const CADMeasure: React.FC = () => {
         }
     };
 
-    const addMeasurement = () => {
+    const addMeasurement = async () => {
         if (!activeTool) return;
 
         const values: Record<string, number> = {
@@ -53,6 +54,14 @@ const CADMeasure: React.FC = () => {
 
         setMeasurements(prev => [...prev, measurement]);
         setMeasureHistory(prev => [...prev, measurement]);
+
+        // Generate measurement suggestions using Groq
+        try {
+            const context = `Measurement type: ${activeTool}, Value: ${measurement.value}${measurement.unit}`;
+            await groqService.generateDesignSuggestions(context);
+        } catch (error) {
+            console.error('Error generating measurement suggestions:', error);
+        }
     };
 
     const clearMeasurements = () => {
