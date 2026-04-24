@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { chatbotApi } from '../services/api';
 import {
     LayoutDashboard,
     FolderKanban,
@@ -38,102 +39,59 @@ import {
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-    const [animatedStats, setAnimatedStats] = useState({
-        projects: 0,
-        validations: 0,
-        issues: 0,
-        savings: 0,
-    });
+    const [dashboardContent, setDashboardContent] = useState<any>(null);
     const [activeFilter, setActiveFilter] = useState('week');
     const [selectedMetric, setSelectedMetric] = useState('overview');
 
     useEffect(() => {
-        const targetStats = { projects: 12, validations: 48, issues: 156, savings: 32 };
-        const duration = 1500;
-        const steps = 60;
-        const interval = duration / steps;
-        let step = 0;
+        const loadPageData = async () => {
+            try {
+                const response = await chatbotApi.pageContent('dashboard', {
+                    filter: activeFilter,
+                    metric: selectedMetric,
+                    now: new Date().toISOString(),
+                });
+                setDashboardContent(response.content || null);
+            } catch {
+                setDashboardContent(null);
+            }
+        };
 
-        const timer = setInterval(() => {
-            step++;
-            const progress = step / steps;
-            setAnimatedStats({
-                projects: Math.round(targetStats.projects * progress),
-                validations: Math.round(targetStats.validations * progress),
-                issues: Math.round(targetStats.issues * progress),
-                savings: Math.round(targetStats.savings * progress),
-            });
-            if (step >= steps) clearInterval(timer);
-        }, interval);
-
-        return () => clearInterval(timer);
+        loadPageData();
     }, []);
 
-    const stats = [
-        {
-            label: 'Active Projects',
-            value: animatedStats.projects,
-            icon: FolderKanban,
-            color: 'from-blue-500 to-cyan-500',
-            bgColor: 'bg-blue-500/10',
-            change: '+3 this week',
-            trend: 'up',
-            description: '3 new projects started',
-        },
-        {
-            label: 'Validations Run',
-            value: animatedStats.validations,
-            icon: Shield,
-            color: 'from-purple-500 to-pink-500',
-            bgColor: 'bg-purple-500/10',
-            change: '+12 today',
-            trend: 'up',
-            description: 'Automated checks completed',
-        },
-        {
-            label: 'Issues Found',
-            value: animatedStats.issues,
-            icon: AlertTriangle,
-            color: 'from-orange-500 to-red-500',
-            bgColor: 'bg-orange-500/10',
-            change: '85% resolved',
-            trend: 'down',
-            description: 'Design issues detected',
-        },
-        {
-            label: 'Cost Savings',
-            value: `${animatedStats.savings}%`,
-            icon: TrendingUp,
-            color: 'from-green-500 to-emerald-500',
-            bgColor: 'bg-green-500/10',
-            change: '$45K saved',
-            trend: 'up',
-            description: 'Manufacturing cost reduction',
-        },
-    ];
+    const statIconMap: Record<string, React.ElementType> = {
+        projects: FolderKanban,
+        validations: Shield,
+        issues: AlertTriangle,
+        savings: TrendingUp,
+    };
 
-    const recentProjects = [
-        { name: 'Bracket Assembly v2', status: 'passed', issues: 2, lastChecked: '2 hours ago', score: 94, progress: 94, category: 'Injection Molding' },
-        { name: 'Engine Housing', status: 'warning', issues: 5, lastChecked: '5 hours ago', score: 72, progress: 72, category: 'CNC Machining' },
-        { name: 'Gear Box Cover', status: 'failed', issues: 12, lastChecked: '1 day ago', score: 45, progress: 45, category: 'Die Casting' },
-        { name: 'Injection Mold Base', status: 'passed', issues: 1, lastChecked: '2 days ago', score: 98, progress: 98, category: 'Injection Molding' },
-        { name: 'Pump Housing', status: 'passed', issues: 3, lastChecked: '3 days ago', score: 88, progress: 88, category: '3D Printing' },
-    ];
+    const statColorMap: Record<string, { color: string; bgColor: string }> = {
+        projects: { color: 'from-blue-500 to-cyan-500', bgColor: 'bg-blue-500/10' },
+        validations: { color: 'from-purple-500 to-pink-500', bgColor: 'bg-purple-500/10' },
+        issues: { color: 'from-orange-500 to-red-500', bgColor: 'bg-orange-500/10' },
+        savings: { color: 'from-green-500 to-emerald-500', bgColor: 'bg-green-500/10' },
+    };
 
-    const validationHistory = [
-        { date: 'Today', passed: 8, failed: 2, warnings: 5, total: 15 },
-        { date: 'Yesterday', passed: 15, failed: 3, warnings: 7, total: 25 },
-        { date: 'Mar 25', passed: 12, failed: 1, warnings: 4, total: 17 },
-        { date: 'Mar 24', passed: 10, failed: 4, warnings: 8, total: 22 },
-        { date: 'Mar 23', passed: 18, failed: 2, warnings: 3, total: 23 },
-    ];
+    const stats = (dashboardContent?.stats || []).map((item: any) => {
+        const key = String(item.icon || 'projects');
+        const colors = statColorMap[key] || statColorMap.projects;
+        return {
+            label: String(item.label || 'Metric'),
+            value: typeof item.value === 'number' ? item.value : String(item.value || '0'),
+            icon: statIconMap[key] || FolderKanban,
+            color: colors.color,
+            bgColor: colors.bgColor,
+            change: String(item.change || ''),
+            trend: String(item.trend || 'up'),
+            description: String(item.description || ''),
+        };
+    });
 
-    const aiInsights = [
-        { type: 'warning', text: 'Engine Housing has 3 critical tolerance issues', action: 'View Details', priority: 'high' },
-        { type: 'success', text: 'Bracket Assembly optimized for CNC machining', action: 'See Report', priority: 'low' },
-        { type: 'info', text: 'Material cost reduction opportunity in Gear Box', action: 'Learn More', priority: 'medium' },
-        { type: 'warning', text: '5 designs pending validation review', action: 'Review Now', priority: 'medium' },
-    ];
+    const recentProjects = dashboardContent?.recentProjects || [];
+    const validationHistory = dashboardContent?.validationHistory || [];
+    const aiInsights = dashboardContent?.aiInsights || [];
 
     const quickActions = [
         { to: '/validator', icon: Shield, label: 'Validate Design', description: 'Upload and check your CAD files', color: 'from-cyan-500 to-blue-500', bgColor: 'bg-cyan-500/10' },
@@ -204,9 +162,9 @@ const Dashboard: React.FC = () => {
                             </div>
                             <div>
                                 <h1 className="text-3xl md:text-4xl font-bold text-white mb-1">
-                                    Welcome back, <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">Designer</span>
+                                    {dashboardContent?.headline || 'AI Dashboard'}
                                 </h1>
-                                <p className="text-gray-400 text-sm md:text-base">Here's your design validation overview for today</p>
+                                <p className="text-gray-400 text-sm md:text-base">{dashboardContent?.subheadline || 'Live model-generated engineering insights'}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -335,8 +293,8 @@ const Dashboard: React.FC = () => {
                                                     <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
                                                         <div
                                                             className={`h-full rounded-full transition-all duration-500 ${project.status === 'passed' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                                                                    project.status === 'warning' ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
-                                                                        'bg-gradient-to-r from-red-500 to-pink-500'
+                                                                project.status === 'warning' ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+                                                                    'bg-gradient-to-r from-red-500 to-pink-500'
                                                                 }`}
                                                             style={{ width: `${project.progress}%` }}
                                                         />
@@ -374,8 +332,8 @@ const Dashboard: React.FC = () => {
                                             key={filter}
                                             onClick={() => setActiveFilter(filter)}
                                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${activeFilter === filter
-                                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                                                    : 'bg-white/5 text-gray-400 hover:text-white border border-white/10'
+                                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                                                : 'bg-white/5 text-gray-400 hover:text-white border border-white/10'
                                                 }`}
                                         >
                                             {filter.charAt(0).toUpperCase() + filter.slice(1)}

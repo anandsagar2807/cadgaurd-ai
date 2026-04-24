@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { chatbotApi } from '../services/api';
 import {
     GitCompare,
     Upload,
@@ -61,51 +62,89 @@ const Compare: React.FC = () => {
     const [showResults, setShowResults] = useState(false);
     const [activeView, setActiveView] = useState<'table' | 'cards' | 'visual'>('cards');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
-
-    const comparisonData: ComparisonItem[] = [
-        { metric: 'Overall DFM Score', original: '62%', optimized: '94%', change: 32, category: 'quality', icon: Award },
-        { metric: 'Wall Thickness Compliance', original: '45%', optimized: '100%', change: 55, category: 'quality', icon: Layers },
-        { metric: 'Draft Angle Coverage', original: '30%', optimized: '95%', change: 65, category: 'quality', icon: Ruler },
-        { metric: 'Estimated Tooling Cost', original: '$45,000', optimized: '$32,000', change: -29, category: 'cost', icon: DollarSign },
-        { metric: 'Production Cost/Unit', original: '$2.50', optimized: '$1.85', change: -26, category: 'cost', icon: DollarSign },
-        { metric: 'Assembly Time', original: '12 min', optimized: '5 min', change: -58, category: 'performance', icon: Clock },
-        { metric: 'Part Count', original: 15, optimized: 8, change: -47, category: 'performance', icon: Box },
-        { metric: 'Tolerance Issues', original: 8, optimized: 2, change: -75, category: 'quality', icon: Target },
-        { metric: 'Material Waste', original: '18%', optimized: '8%', change: -56, category: 'cost', icon: Ruler },
-        { metric: 'Cycle Time', original: '45 sec', optimized: '32 sec', change: -29, category: 'performance', icon: Zap },
-    ];
-
-    const issuesComparison: IssueComparison[] = [
-        { issue: 'Thin wall sections', original: true, optimized: false, severity: 'error', category: 'DFM' },
-        { issue: 'Missing draft angles', original: true, optimized: false, severity: 'error', category: 'DFM' },
-        { issue: 'Undercut features', original: true, optimized: true, severity: 'warning', category: 'Geometry' },
-        { issue: 'Sharp internal corners', original: true, optimized: false, severity: 'warning', category: 'DFM' },
-        { issue: 'Tight tolerances', original: true, optimized: false, severity: 'info', category: 'Tolerance' },
-        { issue: 'High fastener count', original: true, optimized: false, severity: 'warning', category: 'DFA' },
-        { issue: 'Material incompatibility', original: true, optimized: false, severity: 'error', category: 'Material' },
-        { issue: 'Complex geometry', original: true, optimized: true, severity: 'info', category: 'Geometry' },
-    ];
-
-    const summaryStats = {
+    const [comparisonData, setComparisonData] = useState<ComparisonItem[]>([]);
+    const [issuesComparison, setIssuesComparison] = useState<IssueComparison[]>([]);
+    const [summaryStats, setSummaryStats] = useState({
         original: {
-            score: 62,
-            issues: 8,
-            cost: '$45,000',
-            time: '12 min',
+            score: 0,
+            issues: 0,
+            cost: '-',
+            time: '-',
         },
         optimized: {
-            score: 94,
-            issues: 2,
-            cost: '$32,000',
-            time: '5 min',
+            score: 0,
+            issues: 0,
+            cost: '-',
+            time: '-',
         },
+    });
+
+    const iconByMetric: Record<string, React.ElementType> = {
+        score: Award,
+        quality: Target,
+        cost: DollarSign,
+        time: Clock,
+        geometry: Layers,
+        dimension: Ruler,
+        performance: Zap,
+        assembly: Box,
     };
 
     const handleCompare = async () => {
         setIsComparing(true);
-        await new Promise(resolve => setTimeout(resolve, 2500));
-        setShowResults(true);
-        setIsComparing(false);
+        try {
+            const response = await chatbotApi.pageContent('compare', {
+                originalFile: file1?.name || 'original.step',
+                optimizedFile: file2?.name || 'optimized.step',
+                originalSize: file1?.size || 0,
+                optimizedSize: file2?.size || 0,
+                timestamp: new Date().toISOString(),
+            });
+
+            const content = response.content || {};
+            const modelComparison = Array.isArray(content.comparisonData) ? content.comparisonData : [];
+            const normalizedComparison: ComparisonItem[] = modelComparison.map((item: any) => {
+                const metric = String(item.metric || 'Metric');
+                const iconKey = metric.toLowerCase().split(' ')[0];
+                return {
+                    metric,
+                    original: item.original ?? '-',
+                    optimized: item.optimized ?? '-',
+                    change: Number(item.change || 0),
+                    category: ['performance', 'cost', 'quality'].includes(String(item.category)) ? item.category : 'quality',
+                    icon: iconByMetric[iconKey] || BarChart3,
+                };
+            });
+
+            const normalizedIssues: IssueComparison[] = (Array.isArray(content.issuesComparison) ? content.issuesComparison : []).map((item: any) => ({
+                issue: String(item.issue || 'Issue'),
+                original: Boolean(item.original),
+                optimized: Boolean(item.optimized),
+                severity: ['error', 'warning', 'info'].includes(String(item.severity)) ? item.severity : 'info',
+                category: String(item.category || 'General'),
+            }));
+
+            setComparisonData(normalizedComparison);
+            setIssuesComparison(normalizedIssues);
+            setSummaryStats({
+                original: {
+                    score: Number(content?.summary?.original?.score || 0),
+                    issues: Number(content?.summary?.original?.issues || 0),
+                    cost: String(content?.summary?.original?.cost || '-'),
+                    time: String(content?.summary?.original?.time || '-'),
+                },
+                optimized: {
+                    score: Number(content?.summary?.optimized?.score || 0),
+                    issues: Number(content?.summary?.optimized?.issues || 0),
+                    cost: String(content?.summary?.optimized?.cost || '-'),
+                    time: String(content?.summary?.optimized?.time || '-'),
+                },
+            });
+
+            setShowResults(true);
+        } finally {
+            setIsComparing(false);
+        }
     };
 
     const getChangeIcon = (change: number) => {
@@ -151,8 +190,8 @@ const Compare: React.FC = () => {
     const optimizedIssues = issuesComparison.filter(i => i.optimized).length;
     const resolvedIssues = originalIssues - optimizedIssues;
 
-    const filteredComparisonData = selectedCategory === 'all' 
-        ? comparisonData 
+    const filteredComparisonData = selectedCategory === 'all'
+        ? comparisonData
         : comparisonData.filter(item => item.category === selectedCategory);
 
     const getFileIcon = (filename: string) => {
@@ -214,9 +253,8 @@ const Compare: React.FC = () => {
                                     className={`relative group cursor-pointer`}
                                 >
                                     <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity`}></div>
-                                    <div className={`relative bg-gradient-to-br from-white/10 to-white/5 rounded-2xl border-2 border-dashed transition-all p-8 ${
-                                        file1 ? 'border-blue-500/50 bg-blue-500/5' : 'border-white/20 hover:border-blue-500/40'
-                                    }`}>
+                                    <div className={`relative bg-gradient-to-br from-white/10 to-white/5 rounded-2xl border-2 border-dashed transition-all p-8 ${file1 ? 'border-blue-500/50 bg-blue-500/5' : 'border-white/20 hover:border-blue-500/40'
+                                        }`}>
                                         <input
                                             type="file"
                                             onChange={(e) => e.target.files?.[0] && setFile1(e.target.files[0])}
@@ -260,9 +298,8 @@ const Compare: React.FC = () => {
                                     className={`relative group cursor-pointer`}
                                 >
                                     <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity`}></div>
-                                    <div className={`relative bg-gradient-to-br from-white/10 to-white/5 rounded-2xl border-2 border-dashed transition-all p-8 ${
-                                        file2 ? 'border-green-500/50 bg-green-500/5' : 'border-white/20 hover:border-green-500/40'
-                                    }`}>
+                                    <div className={`relative bg-gradient-to-br from-white/10 to-white/5 rounded-2xl border-2 border-dashed transition-all p-8 ${file2 ? 'border-green-500/50 bg-green-500/5' : 'border-white/20 hover:border-green-500/40'
+                                        }`}>
                                         <input
                                             type="file"
                                             onChange={(e) => e.target.files?.[0] && setFile2(e.target.files[0])}
@@ -325,11 +362,11 @@ const Compare: React.FC = () => {
                                         )}
                                     </span>
                                 </button>
-                                
+
                                 <button
-                                    onClick={() => { 
-                                        setFile1(new File([''], 'bracket_original.step')); 
-                                        setFile2(new File([''], 'bracket_optimized.step')); 
+                                    onClick={() => {
+                                        setFile1(new File([''], 'bracket_original.step'));
+                                        setFile2(new File([''], 'bracket_optimized.step'));
                                     }}
                                     className="text-sm text-gray-500 hover:text-gray-300 transition-colors flex items-center gap-2"
                                 >
@@ -463,11 +500,10 @@ const Compare: React.FC = () => {
                                         <button
                                             key={view.id}
                                             onClick={() => setActiveView(view.id as typeof activeView)}
-                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${
-                                                activeView === view.id
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${activeView === view.id
                                                     ? 'bg-orange-500/20 border border-orange-500/30 text-orange-400'
                                                     : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
-                                            }`}
+                                                }`}
                                         >
                                             <view.icon className="w-4 h-4" />
                                             {view.label}
@@ -480,11 +516,10 @@ const Compare: React.FC = () => {
                                         <button
                                             key={cat}
                                             onClick={() => setSelectedCategory(cat)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                                selectedCategory === cat
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${selectedCategory === cat
                                                     ? 'bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 text-white'
                                                     : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
-                                            }`}
+                                                }`}
                                         >
                                             {cat.charAt(0).toUpperCase() + cat.slice(1)}
                                         </button>
@@ -597,7 +632,7 @@ const Compare: React.FC = () => {
                                             {filteredComparisonData.slice(0, 5).map((item) => {
                                                 const originalNum = typeof item.original === 'number' ? item.original : parseInt(item.original as string) || 50;
                                                 const optimizedNum = typeof item.optimized === 'number' ? item.optimized : parseInt(item.optimized as string) || 75;
-                                                
+
                                                 return (
                                                     <div key={item.metric} className="space-y-2">
                                                         <div className="flex items-center justify-between text-sm">

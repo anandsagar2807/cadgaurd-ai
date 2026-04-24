@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Download, FileText, Image, Camera, Settings, CheckCircle, Folder, File } from 'lucide-react';
 import AdvancedCADViewer from '../components/AdvancedCADViewer';
+import { chatbotApi } from '../services/api';
 
 interface ExportFormat {
     id: string;
@@ -15,26 +16,51 @@ const CADExport: React.FC = () => {
     const [selectedFormat, setSelectedFormat] = useState<string>('step');
     const [isExporting, setIsExporting] = useState(false);
     const [exportComplete, setExportComplete] = useState(false);
+    const [formats, setFormats] = useState<ExportFormat[]>([]);
+    const [recentExports, setRecentExports] = useState<Array<{ name: string; date: string; size: string }>>([]);
     const [exportOptions, setExportOptions] = useState({
         includeMetadata: true,
         highPrecision: false,
         compressOutput: true,
     });
 
-    const formats: ExportFormat[] = [
-        { id: 'step', label: 'STEP', extension: '.step', desc: 'ISO 10303 standard for CAD data exchange', category: 'CAD' },
-        { id: 'stl', label: 'STL', extension: '.stl', desc: 'Standard for 3D printing and rapid prototyping', category: '3D Print' },
-        { id: 'iges', label: 'IGES', extension: '.igs', desc: 'Legacy format for CAD data exchange', category: 'CAD' },
-        { id: 'obj', label: 'OBJ', extension: '.obj', desc: 'Simple 3D graphics format', category: 'Graphics' },
-        { id: 'fbx', label: 'FBX', extension: '.fbx', desc: 'Autodesk format for 3D animation', category: 'Animation' },
-        { id: 'gltf', label: 'glTF', extension: '.gltf', desc: 'Efficient 3D transmission format', category: 'Web' },
-    ];
+    useEffect(() => {
+        const loadExportContent = async () => {
+            try {
+                const response = await chatbotApi.pageContent('export', {
+                    selectedFormat,
+                    options: exportOptions,
+                    timestamp: new Date().toISOString(),
+                });
 
-    const recentExports = [
-        { name: 'assembly_v2.step', date: '2026-03-29', size: '2.4 MB' },
-        { name: 'motor_housing.stl', date: '2026-03-28', size: '1.8 MB' },
-        { name: 'base_plate.obj', date: '2026-03-27', size: '956 KB' },
-    ];
+                const content = response.content || {};
+                const modelFormats: ExportFormat[] = (Array.isArray(content.formats) ? content.formats : []).map((item: any) => ({
+                    id: String(item.id || '').toLowerCase() || 'step',
+                    label: String(item.label || 'FORMAT'),
+                    extension: String(item.extension || '.dat'),
+                    desc: String(item.desc || 'Model-generated export format'),
+                    category: String(item.category || 'CAD'),
+                }));
+
+                setFormats(modelFormats);
+                if (modelFormats.length > 0 && !modelFormats.find((f) => f.id === selectedFormat)) {
+                    setSelectedFormat(modelFormats[0].id);
+                }
+
+                const modelRecent = Array.isArray(content.recentExports) ? content.recentExports : [];
+                setRecentExports(modelRecent.map((item: any) => ({
+                    name: String(item.name || 'export.step'),
+                    date: String(item.date || new Date().toISOString().split('T')[0]),
+                    size: String(item.size || '0 MB'),
+                })));
+            } catch {
+                setFormats([]);
+                setRecentExports([]);
+            }
+        };
+
+        loadExportContent();
+    }, []);
 
     const exportModel = async () => {
         setIsExporting(true);
