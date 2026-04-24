@@ -6,9 +6,11 @@
   "dependencies": {
     "@react-three/drei": "^9.88.0",
     "@react-three/fiber": "^8.15.0",
+    "@supabase/supabase-js": "^2.104.1",
     "axios": "^1.6.0",
     "clsx": "^2.0.0",
     "framer-motion": "^12.38.0",
+    "groq": "^5.22.0",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
