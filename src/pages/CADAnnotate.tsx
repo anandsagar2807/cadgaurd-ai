@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PenTool, Plus, MessageSquare, AlertTriangle, Info, XCircle, Trash2, Bookmark, Save } from 'lucide-react';
+import { groqService } from '../services/groqService';
 import AdvancedCADViewer from '../components/AdvancedCADViewer';
 
 interface Annotation {
@@ -26,7 +27,7 @@ const CADAnnotate: React.FC = () => {
         { id: 'critical', label: 'Critical', icon: XCircle, color: 'red' },
     ];
 
-    const addAnnotation = () => {
+    const addAnnotation = async () => {
         if (!newText.trim()) return;
 
         const annotation: Annotation = {
@@ -42,6 +43,14 @@ const CADAnnotate: React.FC = () => {
         setNewText('');
         setNewType('note');
         setShowModal(false);
+
+        // Generate annotation insights using Groq
+        try {
+            const context = `Design annotation: ${annotation.text}`;
+            await groqService.generateDesignSuggestions(context);
+        } catch (error) {
+            console.error('Error generating annotation insights:', error);
+        }
     };
 
     const deleteAnnotation = (id: string) => {

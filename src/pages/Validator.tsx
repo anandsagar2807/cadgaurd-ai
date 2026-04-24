@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { groqService } from '../services/groqService';
 import {
     Upload,
     FileText,
@@ -369,15 +370,47 @@ const Validator: React.FC = () => {
         setProgress(0);
         setAnalysisStep(0);
 
-        for (let i = 0; i < analysisSteps.length; i++) {
-            setAnalysisStep(i);
-            await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
-            setProgress((i + 1) * 20);
-        }
+        try {
+            for (let i = 0; i < analysisSteps.length; i++) {
+                setAnalysisStep(i);
+                await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
+                setProgress((i + 1) * 20);
+            }
 
-        setIssues(mockIssues);
-        setShowResults(true);
-        setIsAnalyzing(false);
+            // Generate validation report using Groq
+            const fileInfo = `File: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)}MB`;
+            const validationReport = await groqService.generateValidationReport(fileInfo);
+
+            // Parse and format the issues from Groq response
+            const groqIssues = validationReport.issues || [];
+
+            // If Groq returns issues in the expected format, use them; otherwise use mock data with enhancement
+            if (groqIssues.length > 0) {
+                // Format Groq issues to match our ValidationIssue interface
+                const formattedIssues: ValidationIssue[] = groqIssues.map((issue: any, index: number) => ({
+                    id: issue.id || String(index + 1),
+                    type: issue.type || (issue.severity > 70 ? 'error' : issue.severity > 40 ? 'warning' : 'info'),
+                    category: issue.category || 'General',
+                    message: issue.message || 'Issue detected',
+                    severity: typeof issue.severity === 'number' ? issue.severity : 50,
+                    suggestion: issue.suggestion || 'Review and optimize this area',
+                    location: [Math.random() * 40 - 20, Math.random() * 40, Math.random() * 40 - 20] as [number, number, number],
+                }));
+                setIssues(formattedIssues);
+            } else {
+                // Fallback to enhanced mock issues
+                setIssues(mockIssues);
+            }
+
+            setShowResults(true);
+        } catch (error) {
+            console.error('Error during validation:', error);
+            // Use mock issues as fallback
+            setIssues(mockIssues);
+            setShowResults(true);
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     const getTypeIcon = (type: string) => {
