@@ -158,14 +158,14 @@ const Landing: React.FC = () => {
 
                         {/* CTA Buttons */}
                         <div className="hidden md:flex items-center gap-4">
-                            <Link 
-                                to="/dashboard" 
+                            <Link
+                                to="/login"
                                 className="px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors"
                             >
                                 Sign In
                             </Link>
-                            <Link 
-                                to="/dashboard" 
+                            <Link
+                                to="/signup"
                                 className="relative group"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-violet-500 rounded-lg blur opacity-60 group-hover:opacity-100 transition-opacity"></div>
@@ -206,8 +206,8 @@ const Landing: React.FC = () => {
                                     </a>
                                 ))}
                                 <div className="pt-4 border-t border-white/10 space-y-3">
-                                    <Link to="/dashboard" className="block text-gray-300">Sign In</Link>
-                                    <Link to="/dashboard" className="block px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg text-center font-medium">
+                                    <Link to="/login" className="block text-gray-300">Sign In</Link>
+                                    <Link to="/signup" className="block px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg text-center font-medium">
                                         Start Free Trial
                                     </Link>
                                 </div>
@@ -256,23 +256,23 @@ const Landing: React.FC = () => {
                             </div>
 
                             {/* CTA Buttons */}
-                            <motion.div 
+                            <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.4 }}
                                 className="flex flex-col sm:flex-row gap-4"
                             >
-                                <Link to="/dashboard" className="group relative">
+                                <Link to="/signup" className="group relative">
                                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-violet-500 rounded-xl blur-xl opacity-60 group-hover:opacity-100 transition-opacity"></div>
                                     <div className="relative px-8 py-4 bg-gradient-to-r from-blue-500 via-purple-500 to-violet-500 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all">
-                                        Launch Dashboard
+                                        Get Started Free
                                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                     </div>
                                 </Link>
-                                <Link to="/image-validator" className="group px-8 py-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-2">
+                                <button className="group px-8 py-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-2">
                                     <Play className="w-5 h-5 text-blue-400" />
-                                    <span>View Demo</span>
-                                </Link>
+                                    <span>Watch Demo</span>
+                                </button>
                             </motion.div>
 
                             {/* Trust Indicators */}
@@ -636,16 +636,16 @@ const Landing: React.FC = () => {
                                     Join thousands of engineers already using CADGuard AI to validate designs, reduce costs, and accelerate time-to-market.
                                 </p>
                                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                                    <Link to="/dashboard" className="group relative">
+                                    <Link to="/signup" className="group relative">
                                         <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-violet-500 rounded-xl blur opacity-60 group-hover:opacity-100 transition-opacity"></div>
                                         <div className="relative px-8 py-4 bg-gradient-to-r from-blue-500 via-purple-500 to-violet-500 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg">
                                             Get Started Free
                                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                         </div>
                                     </Link>
-                                    <button className="px-8 py-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-white/20 transition-all">
-                                        Schedule Demo
-                                    </button>
+                                    <Link to="/login" className="px-8 py-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center">
+                                        Sign In
+                                    </Link>
                                 </div>
                                 <p className="text-sm text-gray-500">
                                     No credit card required • Free tier available • Cancel anytime
